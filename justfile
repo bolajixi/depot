@@ -102,7 +102,7 @@ health:
     @curl -sf http://localhost:8083/actuator/health | python3 -c "import sys,json; d=json.load(sys.stdin); print('fx-wms       ', d['status'])" 2>/dev/null || echo "fx-wms        DOWN"
     @curl -sf http://localhost:8084/actuator/health | python3 -c "import sys,json; d=json.load(sys.stdin); print('fx-treasury  ', d['status'])" 2>/dev/null || echo "fx-treasury   DOWN"
     @curl -sf http://localhost:8085/actuator/health | python3 -c "import sys,json; d=json.load(sys.stdin); print('fx-ledger    ', d['status'])" 2>/dev/null || echo "fx-ledger     DOWN"
-    @curl -sf http://localhost:8090/health          | python3 -c "import sys,json; d=json.load(sys.stdin); print('sync         ', d['status'])" 2>/dev/null || echo "sync          DOWN"
+    @curl -sf http://localhost:8090/health          | python3 -c "import sys,json; d=json.load(sys.stdin); print('sync         ', 'UP' if d.get('etcd')=='ok' else 'DOWN')" 2>/dev/null || echo "sync          DOWN"
 
 ## Print all service URLs
 urls:
