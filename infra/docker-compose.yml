@@ -1,0 +1,81 @@
+name: depot-infra
+
+###########################
+# SHARED NETWORK
+# depot-infra owns this network. All other stacks reference it as external.
+# Must be started before any other stack.
+###########################
+networks:
+  default:
+    name: secure_idmsa_network
+    driver: bridge
+
+services:
+  # ── Cassandra ─────────────────────────────────────────────────────────────
+  # Single shared instance for all fx-* services.
+  # Each service uses its own keyspace: dola_fx, dola_fx_oms, dola_fx_ledger,
+  # dola_fx_treasury. Keyspaces are auto-created by each service on startup.
+  cassandra:
+    container_name: depot-cassandra
+    image: cassandra:4.1
+    ports:
+      - "9042:9042"
+    environment:
+      - CASSANDRA_CLUSTER_NAME=dola_cluster
+      - CASSANDRA_DC=datacenter1
+      - CASSANDRA_RACK=rack1
+      - MAX_HEAP_SIZE=512M
+      - HEAP_NEWSIZE=128M
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe keyspaces'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ── Redpanda (Kafka-compatible) ────────────────────────────────────────────
+  # Shared broker for all fx-* services.
+  # PLAINTEXT://depot-redpanda:9092  → container-to-container
+  # EXTERNAL://localhost:19092       → host-side tools (rpk, kcat, etc.)
+  redpanda:
+    container_name: depot-redpanda
+    image: redpandadata/redpanda:v24.1.9
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=256M
+      - --overprovisioned
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:19092
+      - --advertise-kafka-addr=PLAINTEXT://depot-redpanda:9092,EXTERNAL://localhost:19092
+    ports:
+      - "9092:9092"
+      - "19092:19092"
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:'"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  cassandra_data:
+  redpanda_data:
