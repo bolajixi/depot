@@ -21,8 +21,8 @@ It also provides the startup orchestration layer: dependency ordering, health-ga
 
 ```
 depot/
-├── Tiltfile                  — Tilt control plane: docker_compose() calls + resource_deps()
-├── justfile                  — Fallback orchestration without Tilt
+├── Tiltfile                  — Tilt control plane: docker_compose() calls + dc_resource(resource_deps=[])
+├── justfile                  — Orchestration: just up/down call tilt; up-*/down-* targets use docker compose
 ├── infra/
 │   └── docker-compose.yml    — Shared network, depot-cassandra, depot-redpanda
 └── AGENTS.md                 — This file
@@ -53,14 +53,14 @@ tilt up            # start everything; opens UI at http://localhost:10350
 tilt down          # stop everything
 ```
 
-Tilt shows all service health, logs, and dependency state in a browser UI. It enforces the startup ordering defined in `Tiltfile` via `resource_deps()` — services will not start until their declared dependencies are healthy.
+Tilt shows all service health, logs, and dependency state in a browser UI. It enforces the startup ordering defined in `Tiltfile` via `dc_resource(resource_deps=[...])` — services will not start until their declared dependencies are healthy.
 
-### Without Tilt (fallback)
+### Individual service restarts (docker compose, no Tilt needed)
 
 ```bash
 cd depot
-just up            # start everything in dependency order
-just down          # stop everything (reverse order)
+just up-wms        # restart a single service
+just down-oms      # stop a single service
 just status        # show running containers across all stacks
 just health        # hit /actuator/health on each service
 just urls          # print all service URLs
@@ -116,15 +116,14 @@ Created by `infra/docker-compose.yml` as a standard Docker bridge network. All o
 
 ## Startup Ordering
 
-The full dependency graph (enforced by Tilt `resource_deps()`):
+The full dependency graph (enforced by Tilt `dc_resource(resource_deps=[])`):
 
 ```
 depot-infra (cassandra + redpanda)
     │
     ├── odin (iam)
     │     ├── kratos-migrate → kratos_public / kratos_admin
-    │     ├── kratos_public → oathkeeper → traefik
-    │     └── postgresd → hydra-migrate → hydra
+    │     └── kratos_public → oathkeeper → traefik
     │
     ├── sync (etcd → sync)
     │
@@ -139,7 +138,7 @@ depot-infra (cassandra + redpanda)
     └── fx-treasury (needs: cassandra, redpanda, fx-ledger, sync, fx-wallet-management-service)
 ```
 
-When using `just up` (no Tilt), each target runs sequentially in this order. There is no health-gating between steps — if a service takes longer to start, the next `docker compose up -d` call still proceeds immediately. For guaranteed health-gated ordering, use `tilt up`.
+`just up` calls `tilt up` which enforces this ordering with health-gating. Individual `just up-*` targets use docker compose directly with no health-gating — use them for targeted restarts only.
 
 ---
 
@@ -163,7 +162,7 @@ When using `just up` (no Tilt), each target runs sequentially in this order. The
 ## Adding a New Service
 
 1. Add a `docker_compose()` call in `Tiltfile` with the correct `project_name`
-2. Add `resource_deps()` entries declaring what must be healthy before this service starts
+2. Add `dc_resource('service-name', resource_deps=['dep1', 'dep2'])` entries for startup ordering
 3. Add `up-<service>` / `down-<service>` targets to `justfile`
 4. Add the service to the `status` and `health` targets in `justfile`
 5. If the service needs Cassandra or Redpanda: point it at `depot-cassandra` / `depot-redpanda` — do not add per-service infra containers
@@ -185,6 +184,6 @@ Deployment ordering in prod is handled by service-level retry logic and Nomad he
 ## Known Issues & Gotchas
 
 - **odin SMTP must be configured** — `../odin/.env.local` must have a real `SMTP_CONNECTION_URI` for email OTP flows to work. The placeholder `YOUR_APP_PASSWORD` will cause Kratos to fail silently on email sends.
-- **`just up` has no health-gating** — sequential `docker compose up -d` calls do not wait for the previous service to be healthy. If a service fails to connect to an upstream on startup, check `just logs <stack>` and restart that service after its dependency is ready.
+- **Individual `just up-*` targets have no health-gating** — `docker compose up -d` does not wait for upstream services to be healthy. Use these only for targeted restarts when the rest of the stack is already running. For a full cold start, use `just up` (which calls `tilt up`).
 - **amebo conflict** — `amebo/docker-compose.yml` previously conflicted with fx-backend (port 8081) and WMS Redpanda (port 9092). Remapped to host ports 18081, 18082, 29092. Do not start amebo while depot is running without checking for remaining conflicts.
 - **Per-service `just stack-create` still works** — Individual services can still be started with their own `just stack-create` commands, but they require depot-infra to be running first (`cd depot && just up-infra`).
