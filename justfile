@@ -1,13 +1,15 @@
 # depot/justfile
-# Local development control plane — fallback for environments without Tilt.
-# Prefer `tilt up` for the full experience (dependency graph + live UI).
+# Local development control plane for the Dola FX platform.
 #
 # Usage:
-#   just up          # start everything in the correct order
-#   just down        # stop everything
-#   just status      # show running containers across all stacks
+#   just up          # start full stack via Tilt (dependency graph + UI at localhost:10350)
+#   just down        # stop full stack via Tilt
 #   just health      # hit /actuator/health on each service
+#   just status      # running containers across all stacks
 #   just urls        # print all service URLs
+#
+# Individual service targets use docker compose directly (for targeted restarts):
+#   just up-wms / just down-wms   etc.
 
 default:
     just --list
@@ -70,15 +72,17 @@ down-treasury:
 
 # ── Full Stack ─────────────────────────────────────────────────────────────
 
-## Start everything in dependency order
-up: up-infra up-iam up-sync up-fx-backend up-fx-ledger up-wms up-oms up-treasury
+## Start full stack via Tilt (dependency graph + live UI at localhost:10350)
+up:
+    tilt up
 
-## Stop everything (reverse order)
-down: down-treasury down-oms down-wms down-fx-ledger down-fx-backend down-sync down-iam down-infra
+## Stop full stack via Tilt
+down:
+    tilt down
 
 ## Nuke all containers + volumes (full reset)
 nuke:
-    just down
+    tilt down
     docker compose -p depot-infra -f infra/docker-compose.yml down -v
     docker network rm secure_idmsa_network 2>/dev/null || true
 
