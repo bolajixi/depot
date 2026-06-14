@@ -35,22 +35,21 @@ docker_compose('../fx-order-management-service/docker-compose.yml',  project_nam
 docker_compose('../fx-treasury/docker-compose.yml',                  project_name='fx-treasury-stack')
 
 # ── Startup Ordering ───────────────────────────────────────────────────────
-# Tilt will not start a resource until all its deps are healthy.
+# dc_resource sets deps so Tilt won't start a resource until its deps are healthy.
 
 # IAM internal ordering
-resource_deps('kratos-migrate',               ['cassandra'])
-resource_deps('kratos_public',                ['kratos-migrate'])
-resource_deps('kratos_admin',                 ['kratos-migrate'])
-resource_deps('oathkeeper',                   ['kratos_public'])
-resource_deps('hydra',                        ['hydra-migrate'])
-resource_deps('traefik',                      ['oathkeeper'])
+dc_resource('kratos-migrate',               resource_deps=['cassandra'])
+dc_resource('kratos_public',                resource_deps=['kratos-migrate'])
+dc_resource('kratos_admin',                 resource_deps=['kratos-migrate'])
+dc_resource('oathkeeper',                   resource_deps=['kratos_public'])
+dc_resource('traefik',                      resource_deps=['oathkeeper'])
 
 # Sync internal ordering
-resource_deps('sync',                         ['etcd'])
+dc_resource('sync',                         resource_deps=['etcd'])
 
 # Application service deps
-resource_deps('dola-backend',                 ['cassandra', 'oathkeeper'])
-resource_deps('fx-ledger',                    ['cassandra'])
-resource_deps('fx-wallet-management-service', ['cassandra', 'redpanda', 'fx-ledger', 'sync'])
-resource_deps('fx-order-management-service',  ['redpanda', 'fx-wallet-management-service'])
-resource_deps('fx-treasury',                  ['cassandra', 'redpanda', 'fx-ledger', 'sync', 'fx-wallet-management-service'])
+dc_resource('dola-backend',                 resource_deps=['cassandra', 'oathkeeper'])
+dc_resource('fx-ledger',                    resource_deps=['cassandra'])
+dc_resource('fx-wallet-management-service', resource_deps=['cassandra', 'redpanda', 'fx-ledger', 'sync'])
+dc_resource('fx-order-management-service',  resource_deps=['redpanda', 'fx-wallet-management-service'])
+dc_resource('fx-treasury',                  resource_deps=['cassandra', 'redpanda', 'fx-ledger', 'sync', 'fx-wallet-management-service'])
