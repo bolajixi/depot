@@ -114,7 +114,7 @@ Available targets: `up/down-infra`, `up/down-iam`, `up/down-sync`, `up/down-fx-b
 | Tilt UI | http://localhost:10350 | — |
 | Traefik UI | http://localhost:8080 | — |
 | Jaeger | http://localhost:16686 | — |
-| Mail UI (dev) | http://localhost:4436 | — |
+| Mail UI (dev) | http://localhost:8025 | — |
 
 ---
 

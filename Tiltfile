@@ -39,8 +39,8 @@ docker_compose('../fx-treasury/docker-compose.yml',                  project_nam
 
 # IAM internal ordering
 dc_resource('kratos-migrate',               resource_deps=['cassandra'])
-dc_resource('kratos_public',                resource_deps=['kratos-migrate'])
-dc_resource('kratos_admin',                 resource_deps=['kratos-migrate'])
+dc_resource('kratos_public',                resource_deps=['kratos-migrate', 'mailpit'])
+dc_resource('kratos_admin',                 resource_deps=['kratos-migrate', 'mailpit'])
 dc_resource('oathkeeper',                   resource_deps=['kratos_public'])
 dc_resource('traefik',                      resource_deps=['oathkeeper'])
 
