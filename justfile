@@ -138,9 +138,9 @@ urls:
 #   3. Run fx-backend hurl suite (smoke, auth, callback, user, onboarding, attachment, admin)
 #   4. Run WMS hurl suite (smoke, wallet-create, wallet, idempotency, admin)
 #   5. Capture wallet_account_id from WMS for OMS
-#   6. Run OMS smoke suite (full oms.hurl pending tasks #4 #5 #6)
+#   6. Run OMS full suite (smoke + oms.hurl)
 #   7. Run treasury suite (smoke + treasury)
-#   8. Run ledger smoke (ledger.hurl pending tasks #2 #3)
+#   8. Run ledger full suite (smoke + ledger.hurl)
 #
 ## Platform-wide E2E test suite — seeds a real user via APIs, tests all services
 test-e2e:
@@ -239,13 +239,21 @@ print(m.group(1) if m else '')
       | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data'][0]['walletAccountId'])" 2>/dev/null || echo "")
     echo "  wallet_account_id=$WALLET_ACCOUNT_ID"
 
-    # ── Phase 5: OMS (smoke only — oms.hurl pending tasks #4 #5 #6) ──────
+    # ── Phase 5: OMS ──────────────────────────────────────────────────────
+    # wallet_account_id is the E2E user's EUR wallet from Phase 4.
+    # target_account_id reuses the same wallet for test purposes (OMS validates
+    # UUID format but doesn't enforce sender ≠ receiver at the API layer).
     echo ""
-    echo "Phase 5: OMS smoke tests  (oms.hurl skipped — pending fixes #4 #5 #6)"
+    echo "Phase 5: OMS tests"
+    TARGET_ACCOUNT_ID="${WALLET_ACCOUNT_ID:-00000000-0000-0000-0000-000000000001}"
     hurl --test --jobs 1 \
       --variable base_url=http://localhost:8082 \
+      --variable session_token="$SESSION_TOKEN" \
       --variable user_id="$USER_ID" \
-      ../fx-order-management-service/tests/hurl/smoke.hurl
+      --variable wallet_account_id="${WALLET_ACCOUNT_ID:-00000000-0000-0000-0000-000000000001}" \
+      --variable target_account_id="$TARGET_ACCOUNT_ID" \
+      ../fx-order-management-service/tests/hurl/smoke.hurl \
+      ../fx-order-management-service/tests/hurl/oms.hurl
 
     # ── Phase 6: Treasury ─────────────────────────────────────────────────
     echo ""
@@ -256,17 +264,18 @@ print(m.group(1) if m else '')
       ../fx-treasury/tests/hurl/smoke.hurl \
       ../fx-treasury/tests/hurl/treasury.hurl
 
-    # ── Phase 7: Ledger (smoke only — ledger.hurl pending tasks #2 #3) ───
+    # ── Phase 7: Ledger ───────────────────────────────────────────────────
     echo ""
-    echo "Phase 7: Ledger smoke tests  (ledger.hurl skipped — pending fixes #2 #3)"
+    echo "Phase 7: Ledger tests"
     hurl --test --jobs 1 \
       --variable base_url=http://localhost:8085 \
-      ../fx-ledger/tests/hurl/smoke.hurl
+      --variable ts="$TS" \
+      ../fx-ledger/tests/hurl/smoke.hurl \
+      ../fx-ledger/tests/hurl/ledger.hurl
 
     echo ""
     echo "E2E suite complete."
-    echo "  Open sessions for $TEST_EMAIL are live in Kratos."
-    echo "  Pending (tracked in task list): #2 #3 ledger bugs, #4 #5 #6 OMS bugs."
+    echo "  Session for $TEST_EMAIL is live in Kratos."
 
 ## Tail logs — usage: just logs <stack> [service]
 ## Stacks: infra, iam, sync, fx-backend, fx-ledger, wms, oms, treasury
