@@ -33,6 +33,7 @@ docker_compose('../fx-ledger/docker-compose.yaml',                   project_nam
 docker_compose('../fx-wallet-management-service/docker-compose.yml', project_name='fx-wallet-management-stack')
 docker_compose('../fx-order-management-service/docker-compose.yml',  project_name='fx-order-management-stack')
 docker_compose('../fx-treasury/docker-compose.yml',                  project_name='fx-treasury-stack')
+docker_compose('../towncrier/docker-compose.yml',                    project_name='towncrier-stack')
 
 # ── Startup Ordering ───────────────────────────────────────────────────────
 # dc_resource sets deps so Tilt won't start a resource until its deps are healthy.
@@ -53,3 +54,4 @@ dc_resource('fx-ledger',                    resource_deps=['cassandra'])
 dc_resource('fx-wallet-management-service', resource_deps=['cassandra', 'redpanda', 'fx-ledger', 'sync'])
 dc_resource('fx-order-management-service',  resource_deps=['redpanda', 'fx-wallet-management-service'])
 dc_resource('fx-treasury',                  resource_deps=['cassandra', 'redpanda', 'fx-ledger', 'sync', 'fx-wallet-management-service'])
+dc_resource('towncrier',                    resource_deps=['redpanda'])

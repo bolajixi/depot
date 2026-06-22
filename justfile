@@ -106,6 +106,7 @@ health:
     @curl -sf http://localhost:8083/actuator/health | python3 -c "import sys,json; d=json.load(sys.stdin); print('fx-wms       ', d['status'])" 2>/dev/null || echo "fx-wms        DOWN"
     @curl -sf http://localhost:8084/actuator/health | python3 -c "import sys,json; d=json.load(sys.stdin); print('fx-treasury  ', d['status'])" 2>/dev/null || echo "fx-treasury   DOWN"
     @curl -sf http://localhost:8085/actuator/health | python3 -c "import sys,json; d=json.load(sys.stdin); print('fx-ledger    ', d['status'])" 2>/dev/null || echo "fx-ledger     DOWN"
+    @curl -sf http://localhost:8086/actuator/health | python3 -c "import sys,json; d=json.load(sys.stdin); print('towncrier    ', d['status'])" 2>/dev/null || echo "towncrier     DOWN"
     @curl -sf http://localhost:8090/health          | python3 -c "import sys,json; d=json.load(sys.stdin); print('sync         ', 'UP' if d.get('etcd')=='ok' else 'DOWN')" 2>/dev/null || echo "sync          DOWN"
 
 ## Print all service URLs
@@ -117,6 +118,7 @@ urls:
     @echo "  fx-wms       http://localhost:8083   swagger: http://localhost:8083/swagger-ui"
     @echo "  fx-treasury  http://localhost:8084   swagger: http://localhost:8084/swagger-ui"
     @echo "  fx-ledger    http://localhost:8085   swagger: http://localhost:8085/swagger-ui"
+    @echo "  towncrier    http://localhost:8086"
     @echo "  sync         http://localhost:8090"
     @echo ""
     @echo "Infrastructure"
